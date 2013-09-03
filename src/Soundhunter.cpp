@@ -4,6 +4,7 @@ and may not be redistributed without written permission.*/
 //Using SDL, SDL_image, standard IO, strings, and file streams
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h> /* atoi */
@@ -11,6 +12,7 @@ and may not be redistributed without written permission.*/
 #include <fstream>
 #include <iostream> /* cout */
 #include <cmath>
+
 using namespace std;
 
 //Screen dimension constants
@@ -171,8 +173,9 @@ bool loadMedia( Tile* tiles[] );
 //Frees media and shuts down SDL
 void close();
 
-//Box collision detector
-bool checkCollision( SDL_Rect a, SDL_Rect b );
+//Box collision detectors
+bool isColliding( SDL_Rect a, SDL_Rect b );
+int collisionSide( SDL_Rect a, SDL_Rect b );
 
 //Checks collision box against set of tiles
 bool touchesWall( SDL_Rect box, Tile* tiles[] );
@@ -192,8 +195,11 @@ SDL_Renderer* gRenderer = NULL;
 //Scene textures
 LTexture gDotTexture;
 LTexture gTileTexture;
+LTexture gTextTexture;
 SDL_Rect gTileClips[ TOTAL_TILE_SPRITES ];
 
+//Globally used font
+TTF_Font *gFont = NULL;
 //The music that will be played
 Mix_Music *gMusic = NULL;
 
@@ -362,7 +368,7 @@ Tile::Tile( int x, int y, int tileType )
 void Tile::render( SDL_Rect& camera )
 {
     //If the tile is on screen
-    if( checkCollision( camera, mBox ) )
+    if( isColliding( camera, mBox ) )
     {
         //Show the tile
         gTileTexture.render( mBox.x - camera.x, mBox.y - camera.y, &gTileClips[ mType ] );
@@ -414,7 +420,7 @@ void Dot::handleEvent( SDL_Event& e )
         //Adjust the velocity
         switch( e.key.keysym.sym )
         {
-            case SDLK_UP: mAccelY -= DOT_ACCEL_Y; break;
+            case SDLK_UP: if(!airborne){airborne = true; mVelY = -1;} break;
             case SDLK_DOWN: mAccelY += DOT_ACCEL_Y; break;
             case SDLK_LEFT: mAccelX -= DOT_ACCEL_X; break;
             case SDLK_RIGHT: mAccelX += DOT_ACCEL_X; break;
@@ -440,12 +446,11 @@ void Dot::move( Tile *tiles[] )
 	if(fabs(mVelX) < MAX_SPEED){
 		mVelX += mAccelX;
 	}
-	if(fabs(mVelY) < MAX_SPEED && airborne){
-		mVelY += GRAVITY;
+	if(fabs(mVelY) < MAX_SPEED){
 		mVelY += mAccelY;
 	}
-	if (!airborne){
-		mAccelY = -2;
+	if(mVelY < MAX_SPEED && airborne){
+		mVelY += GRAVITY;
 	}
 
 	// Apply deceleration
@@ -453,40 +458,32 @@ void Dot::move( Tile *tiles[] )
 		mVelX /= FRICTION;
 	}
 
-    //Move the dot left or right
+	if (!airborne){
+			mAccelY = -2;
+	}
+	
+	//Move the dot left or right
     mBox.x += mVelX;
-
-    // If the dot goes too far to the left or right
-    if( ( mBox.x < 0 ) || ( mBox.x + DOT_WIDTH > LEVEL_WIDTH ) )
+    //If the dot went too far to the left or right or touched a wall
+    if( ( mBox.x < 0 ) || ( mBox.x + DOT_WIDTH > LEVEL_WIDTH ) || touchesWall( mBox, tiles ) )
     {
         //move back
-        mBox.x -= mVelX;
-    }
-
-    // If the dot touches a wall
-    if( touchesWall( mBox, tiles ) )
-    {
-        // move to the edge of wall
         mBox.x -= mVelX;
     }
 
     //Move the dot up or down
-    mBox.y += mVelY;
-
-    //If the dot went too far up or down
-    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ))
-    {
-        //move back
-        airborne = false;
-        mBox.y -= mVelY;
-    }
-    // If the dot touches a vertical wall
-    if( touchesWall( mBox, tiles ) )
-    {
-        // move to the edge of wall
-        airborne = false;
-        mBox.y -= mVelY;
-    }
+    if (airborne){
+	    mBox.y += mVelY;
+	    //If the dot went too far up or down or touched a wall
+	    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ) || touchesWall( mBox, tiles ) )
+	    {
+	        //move back
+	        mBox.y -= mVelY;
+	        if (mVelY > 0){ // If we were going down, we are no longer airborne
+	        	airborne = false;
+	        }
+	    }
+	}
 }
 
 void Dot::setCamera( SDL_Rect& camera )
@@ -546,7 +543,7 @@ bool init()
 		}
 
 		//Create window
-		gWindow = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+		gWindow = SDL_CreateWindow( "Soundrietta", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
 		if( gWindow == NULL )
 		{
 			printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
@@ -578,6 +575,13 @@ bool init()
 				if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
 				{
 					printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+					success = false;
+				}
+
+				//Initialize SDL_ttf
+				if( TTF_Init() == -1 )
+				{
+					printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() );
 					success = false;
 				}
 			}
@@ -621,6 +625,24 @@ bool loadMedia( Tile* tiles[] )
 		success = false;
 	}
 
+	//Open the font
+	gFont = TTF_OpenFont( "res/tarzeau.ttf", 28 );
+	if( gFont == NULL )
+	{
+		printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError() );
+		success = false;
+	}
+	else
+	{
+		//Render text
+		SDL_Color textColor = { 0, 0, 0 };
+		if( !gTextTexture.loadFromRenderedText( "The quick brown fox jumps over the lazy dog", textColor ) )
+		{
+			printf( "Failed to render text texture!\n" );
+			success = false;
+		}
+	}
+
 	return success;
 }
 
@@ -629,6 +651,11 @@ void close()
 	//Free loaded images
 	gDotTexture.free();
 	gTileTexture.free();
+	gTextTexture.free();
+
+	//Free global font
+	TTF_CloseFont( gFont );
+	gFont = NULL;
 
 	//Free the music
 	Mix_FreeMusic( gMusic );
@@ -646,7 +673,7 @@ void close()
 	SDL_Quit();
 }
 
-bool checkCollision( SDL_Rect a, SDL_Rect b )
+bool isColliding( SDL_Rect a, SDL_Rect b )
 {
     //The sides of the rectangles
     int leftA, leftB;
@@ -689,6 +716,50 @@ bool checkCollision( SDL_Rect a, SDL_Rect b )
 
     //If none of the sides from A are outside B
     return true;
+}
+
+/**
+*    Checks each side for collison. Returns:
+*    0 : no collision
+*    1 : collision on top of A
+*    2 : collision on right of A
+*    3 : collision on bottom of A
+*    4 : collision on left of A  
+*/
+int collisionSide( SDL_Rect a, SDL_Rect b )
+{
+	float w = 0.5 * (a.w + b.w);
+	float h = 0.5 * (a.h + b.h);
+
+	float aCenterX = (a.x + a.x + w)/2;
+	float bCenterX = (b.x + b.x + w)/2;
+	float aCenterY = (a.y + a.y + w)/2;
+	float bCenterY = (b.y + b.y + w)/2;
+
+	float dx = aCenterX - bCenterX;
+	float dy = aCenterY - bCenterY;
+
+	if (fabs(dx) <= w && fabs(dy) <= h){
+	    // collision!
+	    float wy = w * dy;
+	    float hx = h * dx;
+
+	    if (wy > hx){
+	        if (wy > -hx){
+	            return 1;
+	        }else{
+	            return 4;
+	        }
+	    }else{
+	        if (wy > -hx){
+	            return 2;
+	        }else{
+	            return 3;
+	        }
+	    }
+	}else{
+		return 0; // no collision
+	}
 }
 
 bool setTiles( Tile* tiles[] )
@@ -838,12 +909,9 @@ bool touchesWall( SDL_Rect box, Tile* tiles[] )
     for( int i = 0; i < TOTAL_TILES; ++i )
     {
         //If the tile is solid
-        if( tiles[ i ]->isSolid() )
-        {
-            //If the collision box touches the wall tile
-            if( checkCollision( box, tiles[ i ]->getBox() ) )
-            {
-                return true;
+        if( tiles[ i ]->isSolid() ){
+            if(isColliding( box, tiles[ i ]->getBox() )){
+            	return false;
             }
         }
     }
@@ -924,6 +992,9 @@ int main( int argc, char* args[] )
 
 				//Render dot
 				dot.render( camera );
+
+				//Render text
+				gTextTexture.render( ( SCREEN_WIDTH - gTextTexture.getWidth() ) / 2, ( SCREEN_HEIGHT - gTextTexture.getHeight() ) / 2 );
 
 				//Update screen
 				SDL_RenderPresent( gRenderer );
