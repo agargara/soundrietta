@@ -1,0 +1,1 @@
+g++ src/Soundhunter.cpp -o bin/Soundhunter -I/Library/Frameworks/SDL2.framework/Headers -I/Library/Frameworks/SDL2_mixer.framework/Headers -I/Library/Frameworks/SDL2_image.framework/Headers -framework SDL2 -framework SDL2_image -framework SDL2_mixer -framework Cocoa
