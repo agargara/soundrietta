@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" width="16" height="12" tilewidth="80" tileheight="80">
- <tileset firstgid="1" source="desert.tsx"/>
- <layer name="Tile Layer 1" width="16" height="12">
-  <data encoding="base64" compression="zlib">
-   eJytkUsKwCAQQ0dbP7Xe/7xmI2QhEgcXD0MG4nyCmSXwgSDoDAqo5M9X0Q38oFPmrHs0exE84D3IYI9nU/tgj2fz9K/sf6VXGaq+uX+P3tWVe+7+UO45AMBTA8s=
-  </data>
- </layer>
-</map>

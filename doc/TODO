@@ -1,0 +1,17 @@
+TODO - Soundrietta
+
+Code
+----
+- Fix collision detection
+- Rethink gravity/jump code (look online for theory)
+- Split things into threads
+- Split code into separate files
+
+Creative
+----------
+- Background tiles
+- Storyline
+- Dialogue
+- Character sprites
+- Music
+- Sound
