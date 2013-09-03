@@ -4,25 +4,30 @@ and may not be redistributed without written permission.*/
 //Using SDL, SDL_image, standard IO, strings, and file streams
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h> /* atoi */
 #include <string>
 #include <fstream>
-#include <SDL_mixer.h>
+#include <iostream> /* cout */
+#include <cmath>
+using namespace std;
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
-//The dimensions of the level
-const int LEVEL_WIDTH = 1280;
-const int LEVEL_HEIGHT = 960;
-
 //Tile constants
-const int TILE_WIDTH = 80;
-const int TILE_HEIGHT = 80;
-const int TOTAL_TILES = 192;
+const int TILE_SIZE = 16;
 const int TOTAL_TILE_SPRITES = 12;
+
+//The dimensions of the level
+const int TILES_ACROSS = 80;
+const int TILES_DOWN = 60;
+const int LEVEL_WIDTH = TILE_SIZE * TILES_ACROSS;
+const int LEVEL_HEIGHT = TILE_SIZE * TILES_DOWN;
+
+const int TOTAL_TILES = TILES_ACROSS * TILES_DOWN;
 
 //The different tile sprites
 const int TILE_RED = 0;
@@ -38,9 +43,9 @@ const int TILE_BOTTOMLEFT = 9;
 const int TILE_BOTTOM = 10;
 const int TILE_BOTTOMRIGHT = 11;
 
-
-
-
+// Physics
+const float GRAVITY = 1.1;
+const float FRICTION = 2;
 
 //Texture wrapper class
 class LTexture
@@ -123,8 +128,10 @@ class Dot
 		static const int DOT_WIDTH = 20;
 		static const int DOT_HEIGHT = 20;
 
-		//Maximum axis velocity of the dot
-		static const int DOT_VEL = 10;
+		// Default accel
+		static const float DOT_ACCEL_X = 0.2;
+		static const float DOT_ACCEL_Y = 0.2;
+		static const float MAX_SPEED = TILE_SIZE/2;
 
 		//Initializes the variables
 		Dot();
@@ -145,8 +152,14 @@ class Dot
 		//Collision box of the dot
 		SDL_Rect mBox;
 
+		//The acceleration of the dot
+		float mAccelX, mAccelY;
+
 		//The velocity of the dot
-		int mVelX, mVelY;
+		float mVelX, mVelY;
+
+		// In mid-air or not
+		bool airborne;
 };
 
 //Starts up SDL and creates window
@@ -166,6 +179,9 @@ bool touchesWall( SDL_Rect box, Tile* tiles[] );
 
 //Sets tiles from tile map
 bool setTiles( Tile *tiles[] );
+
+// Gets absolute value of floats
+float abs(float n);
 
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
@@ -336,8 +352,8 @@ Tile::Tile( int x, int y, int tileType )
     mBox.y = y;
 
     //Set the collision box
-    mBox.w = TILE_WIDTH;
-    mBox.h = TILE_HEIGHT;
+    mBox.w =  TILE_SIZE;
+    mBox.h =  TILE_SIZE;
 
     //Get the tile type
     mType = tileType;
@@ -381,9 +397,13 @@ Dot::Dot()
 	mBox.w = DOT_WIDTH;
 	mBox.h = DOT_HEIGHT;
 
-    //Initialize the velocity
+    //Initialize the velocity and accel
     mVelX = 0;
     mVelY = 0;
+    mAccelX = 0;
+    mAccelY = 0;
+
+    airborne = true;
 }
 
 void Dot::handleEvent( SDL_Event& e )
@@ -394,10 +414,10 @@ void Dot::handleEvent( SDL_Event& e )
         //Adjust the velocity
         switch( e.key.keysym.sym )
         {
-            case SDLK_UP: mVelY -= DOT_VEL; break;
-            case SDLK_DOWN: mVelY += DOT_VEL; break;
-            case SDLK_LEFT: mVelX -= DOT_VEL; break;
-            case SDLK_RIGHT: mVelX += DOT_VEL; break;
+            case SDLK_UP: mAccelY -= DOT_ACCEL_Y; break;
+            case SDLK_DOWN: mAccelY += DOT_ACCEL_Y; break;
+            case SDLK_LEFT: mAccelX -= DOT_ACCEL_X; break;
+            case SDLK_RIGHT: mAccelX += DOT_ACCEL_X; break;
         }
     }
     //If a key was released
@@ -406,33 +426,65 @@ void Dot::handleEvent( SDL_Event& e )
         //Adjust the velocity
         switch( e.key.keysym.sym )
         {
-            case SDLK_UP: mVelY += DOT_VEL; break;
-            case SDLK_DOWN: mVelY -= DOT_VEL; break;
-            case SDLK_LEFT: mVelX += DOT_VEL; break;
-            case SDLK_RIGHT: mVelX -= DOT_VEL; break;
+            case SDLK_UP: mAccelY = 0; break;
+            case SDLK_DOWN: mAccelY = 0; break;
+            case SDLK_LEFT: mAccelX = 0; break;
+            case SDLK_RIGHT: mAccelX = 0; break;
         }
     }
 }
 
 void Dot::move( Tile *tiles[] )
 {
+	// Apply acceleration
+	if(fabs(mVelX) < MAX_SPEED){
+		mVelX += mAccelX;
+	}
+	if(fabs(mVelY) < MAX_SPEED && airborne){
+		mVelY += GRAVITY;
+		mVelY += mAccelY;
+	}
+	if (!airborne){
+		mAccelY = -2;
+	}
+
+	// Apply deceleration
+	if(mAccelX == 0){
+		mVelX /= FRICTION;
+	}
+
     //Move the dot left or right
     mBox.x += mVelX;
 
-    //If the dot went too far to the left or right or touched a wall
-    if( ( mBox.x < 0 ) || ( mBox.x + DOT_WIDTH > LEVEL_WIDTH ) || touchesWall( mBox, tiles ) )
+    // If the dot goes too far to the left or right
+    if( ( mBox.x < 0 ) || ( mBox.x + DOT_WIDTH > LEVEL_WIDTH ) )
     {
         //move back
+        mBox.x -= mVelX;
+    }
+
+    // If the dot touches a wall
+    if( touchesWall( mBox, tiles ) )
+    {
+        // move to the edge of wall
         mBox.x -= mVelX;
     }
 
     //Move the dot up or down
     mBox.y += mVelY;
 
-    //If the dot went too far up or down or touched a wall
-    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ) || touchesWall( mBox, tiles ) )
+    //If the dot went too far up or down
+    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ))
     {
         //move back
+        airborne = false;
+        mBox.y -= mVelY;
+    }
+    // If the dot touches a vertical wall
+    if( touchesWall( mBox, tiles ) )
+    {
+        // move to the edge of wall
+        airborne = false;
         mBox.y -= mVelY;
     }
 }
@@ -648,7 +700,7 @@ bool setTiles( Tile* tiles[] )
     int x = 0, y = 0;
 
     //Open the map
-    std::ifstream map( "res/lazy.map" );
+    std::ifstream map( "res/map01.txt" );
 
     //If the map couldn't be loaded
     if( map == NULL )
@@ -695,7 +747,7 @@ bool setTiles( Tile* tiles[] )
 			}
 
 			//Move to next tile spot
-			x += TILE_WIDTH;
+			x +=  TILE_SIZE;
 
 			//If we've gone too far
 			if( x >= LEVEL_WIDTH )
@@ -704,7 +756,7 @@ bool setTiles( Tile* tiles[] )
 				x = 0;
 
 				//Move to the next row
-				y += TILE_HEIGHT;
+				y +=  TILE_SIZE;
 			}
 		}
 		
@@ -713,63 +765,63 @@ bool setTiles( Tile* tiles[] )
 		{
 			gTileClips[ TILE_RED ].x = 0;
 			gTileClips[ TILE_RED ].y = 0;
-			gTileClips[ TILE_RED ].w = TILE_WIDTH;
-			gTileClips[ TILE_RED ].h = TILE_HEIGHT;
+			gTileClips[ TILE_RED ].w =  TILE_SIZE;
+			gTileClips[ TILE_RED ].h =  TILE_SIZE;
 
 			gTileClips[ TILE_GREEN ].x = 0;
-			gTileClips[ TILE_GREEN ].y = 80;
-			gTileClips[ TILE_GREEN ].w = TILE_WIDTH;
-			gTileClips[ TILE_GREEN ].h = TILE_HEIGHT;
+			gTileClips[ TILE_GREEN ].y =  TILE_SIZE;
+			gTileClips[ TILE_GREEN ].w =  TILE_SIZE;
+			gTileClips[ TILE_GREEN ].h =  TILE_SIZE;
 
 			gTileClips[ TILE_BLUE ].x = 0;
-			gTileClips[ TILE_BLUE ].y = 160;
-			gTileClips[ TILE_BLUE ].w = TILE_WIDTH;
-			gTileClips[ TILE_BLUE ].h = TILE_HEIGHT;
+			gTileClips[ TILE_BLUE ].y =  TILE_SIZE*2;
+			gTileClips[ TILE_BLUE ].w =  TILE_SIZE;
+			gTileClips[ TILE_BLUE ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_TOPLEFT ].x = 80;
+			gTileClips[ TILE_TOPLEFT ].x =  TILE_SIZE;
 			gTileClips[ TILE_TOPLEFT ].y = 0;
-			gTileClips[ TILE_TOPLEFT ].w = TILE_WIDTH;
-			gTileClips[ TILE_TOPLEFT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_TOPLEFT ].w =  TILE_SIZE;
+			gTileClips[ TILE_TOPLEFT ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_LEFT ].x = 80;
-			gTileClips[ TILE_LEFT ].y = 80;
-			gTileClips[ TILE_LEFT ].w = TILE_WIDTH;
-			gTileClips[ TILE_LEFT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_LEFT ].x =  TILE_SIZE;
+			gTileClips[ TILE_LEFT ].y =  TILE_SIZE;
+			gTileClips[ TILE_LEFT ].w =  TILE_SIZE;
+			gTileClips[ TILE_LEFT ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_BOTTOMLEFT ].x = 80;
-			gTileClips[ TILE_BOTTOMLEFT ].y = 160;
-			gTileClips[ TILE_BOTTOMLEFT ].w = TILE_WIDTH;
-			gTileClips[ TILE_BOTTOMLEFT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_BOTTOMLEFT ].x =  TILE_SIZE;
+			gTileClips[ TILE_BOTTOMLEFT ].y =  TILE_SIZE*2;
+			gTileClips[ TILE_BOTTOMLEFT ].w =  TILE_SIZE;
+			gTileClips[ TILE_BOTTOMLEFT ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_TOP ].x = 160;
+			gTileClips[ TILE_TOP ].x =  TILE_SIZE*2;
 			gTileClips[ TILE_TOP ].y = 0;
-			gTileClips[ TILE_TOP ].w = TILE_WIDTH;
-			gTileClips[ TILE_TOP ].h = TILE_HEIGHT;
+			gTileClips[ TILE_TOP ].w =  TILE_SIZE;
+			gTileClips[ TILE_TOP ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_CENTER ].x = 160;
-			gTileClips[ TILE_CENTER ].y = 80;
-			gTileClips[ TILE_CENTER ].w = TILE_WIDTH;
-			gTileClips[ TILE_CENTER ].h = TILE_HEIGHT;
+			gTileClips[ TILE_CENTER ].x =  TILE_SIZE*2;
+			gTileClips[ TILE_CENTER ].y =  TILE_SIZE;
+			gTileClips[ TILE_CENTER ].w =  TILE_SIZE;
+			gTileClips[ TILE_CENTER ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_BOTTOM ].x = 160;
-			gTileClips[ TILE_BOTTOM ].y = 160;
-			gTileClips[ TILE_BOTTOM ].w = TILE_WIDTH;
-			gTileClips[ TILE_BOTTOM ].h = TILE_HEIGHT;
+			gTileClips[ TILE_BOTTOM ].x =  TILE_SIZE*2;
+			gTileClips[ TILE_BOTTOM ].y =  TILE_SIZE*2;
+			gTileClips[ TILE_BOTTOM ].w =  TILE_SIZE;
+			gTileClips[ TILE_BOTTOM ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_TOPRIGHT ].x = 240;
+			gTileClips[ TILE_TOPRIGHT ].x =  TILE_SIZE*3;
 			gTileClips[ TILE_TOPRIGHT ].y = 0;
-			gTileClips[ TILE_TOPRIGHT ].w = TILE_WIDTH;
-			gTileClips[ TILE_TOPRIGHT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_TOPRIGHT ].w =  TILE_SIZE;
+			gTileClips[ TILE_TOPRIGHT ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_RIGHT ].x = 240;
-			gTileClips[ TILE_RIGHT ].y = 80;
-			gTileClips[ TILE_RIGHT ].w = TILE_WIDTH;
-			gTileClips[ TILE_RIGHT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_RIGHT ].x =  TILE_SIZE*3;
+			gTileClips[ TILE_RIGHT ].y =  TILE_SIZE;
+			gTileClips[ TILE_RIGHT ].w =  TILE_SIZE;
+			gTileClips[ TILE_RIGHT ].h =  TILE_SIZE;
 
-			gTileClips[ TILE_BOTTOMRIGHT ].x = 240;
-			gTileClips[ TILE_BOTTOMRIGHT ].y = 160;
-			gTileClips[ TILE_BOTTOMRIGHT ].w = TILE_WIDTH;
-			gTileClips[ TILE_BOTTOMRIGHT ].h = TILE_HEIGHT;
+			gTileClips[ TILE_BOTTOMRIGHT ].x =  TILE_SIZE*3;
+			gTileClips[ TILE_BOTTOMRIGHT ].y =  TILE_SIZE*2;
+			gTileClips[ TILE_BOTTOMRIGHT ].w =  TILE_SIZE;
+			gTileClips[ TILE_BOTTOMRIGHT ].h =  TILE_SIZE;
 		}
 	}
 
@@ -798,6 +850,12 @@ bool touchesWall( SDL_Rect box, Tile* tiles[] )
 
     //If no wall tiles were touched
     return false;
+}
+
+float abs(float n) { 
+	if (n < 0) { 
+		return (-1 * n); 
+	} 
 }
 
 int main( int argc, char* args[] )
