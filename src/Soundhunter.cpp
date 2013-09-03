@@ -8,9 +8,11 @@ and may not be redistributed without written permission.*/
 #include <SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h> /* atoi */
-#include <string>
 #include <fstream>
 #include <iostream> /* cout */
+#include <sstream>
+#include <string>
+#include <stdexcept>
 #include <cmath>
 
 using namespace std;
@@ -48,6 +50,24 @@ const int TILE_BOTTOMRIGHT = 11;
 // Physics
 const float GRAVITY = 1.1;
 const float FRICTION = 2;
+std::string consoleCoordinates = "";
+std::string consoleMessage = "";
+
+// BadConversion exception class for stringify
+class BadConversion : public std::runtime_error {
+public:
+  BadConversion(std::string const& s)
+    : std::runtime_error(s)
+    { }
+};
+
+inline std::string stringify(float x)
+{
+  std::ostringstream o;
+  if (!(o << x))
+    throw BadConversion("stringify(float)");
+  return o.str();
+}
 
 //Texture wrapper class
 class LTexture
@@ -461,7 +481,8 @@ void Dot::move( Tile *tiles[] )
 	if (!airborne){
 			mAccelY = -2;
 	}
-	
+
+
 	//Move the dot left or right
     mBox.x += mVelX;
     //If the dot went too far to the left or right or touched a wall
@@ -472,18 +493,21 @@ void Dot::move( Tile *tiles[] )
     }
 
     //Move the dot up or down
-    if (airborne){
-	    mBox.y += mVelY;
-	    //If the dot went too far up or down or touched a wall
-	    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ) || touchesWall( mBox, tiles ) )
-	    {
-	        //move back
-	        mBox.y -= mVelY;
-	        if (mVelY > 0){ // If we were going down, we are no longer airborne
-	        	airborne = false;
-	        }
-	    }
+    mBox.y += mVelY;
+    //If the dot went too far up or down or touched a wall
+    if( ( mBox.y < 0 ) || ( mBox.y + DOT_HEIGHT > LEVEL_HEIGHT ) || touchesWall( mBox, tiles ) )
+    {
+        //move back
+        mBox.y -= mVelY;
+        if (mVelY > 0){ // If we were going down, we are no longer airborne
+        	airborne = false;
+        }
+    }else{
+		airborne = true;
 	}
+
+	// @debug
+	consoleCoordinates = stringify(mBox.x) + ", " + stringify(mBox.y);
 }
 
 void Dot::setCamera( SDL_Rect& camera )
@@ -626,21 +650,11 @@ bool loadMedia( Tile* tiles[] )
 	}
 
 	//Open the font
-	gFont = TTF_OpenFont( "res/tarzeau.ttf", 28 );
+	gFont = TTF_OpenFont( "res/tarzeau.ttf", 10 );
 	if( gFont == NULL )
 	{
 		printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError() );
 		success = false;
-	}
-	else
-	{
-		//Render text
-		SDL_Color textColor = { 0, 0, 0 };
-		if( !gTextTexture.loadFromRenderedText( "The quick brown fox jumps over the lazy dog", textColor ) )
-		{
-			printf( "Failed to render text texture!\n" );
-			success = false;
-		}
 	}
 
 	return success;
@@ -911,11 +925,12 @@ bool touchesWall( SDL_Rect box, Tile* tiles[] )
         //If the tile is solid
         if( tiles[ i ]->isSolid() ){
             if(isColliding( box, tiles[ i ]->getBox() )){
-            	return false;
+            	consoleMessage = "Touching wall";
+            	return true;
             }
         }
     }
-
+    consoleMessage = "";
     //If no wall tiles were touched
     return false;
 }
@@ -993,9 +1008,15 @@ int main( int argc, char* args[] )
 				//Render dot
 				dot.render( camera );
 
-				//Render text
-				gTextTexture.render( ( SCREEN_WIDTH - gTextTexture.getWidth() ) / 2, ( SCREEN_HEIGHT - gTextTexture.getHeight() ) / 2 );
-
+				//Write text
+				SDL_Color textColor = { 255, 0, 0 };
+				if( !gTextTexture.loadFromRenderedText(consoleCoordinates + consoleMessage, textColor ) )
+				{
+					printf( "Failed to render text texture!\n" );
+				}else{
+					//Render text
+					gTextTexture.render( 8, SCREEN_HEIGHT - 18 );
+				}
 				//Update screen
 				SDL_RenderPresent( gRenderer );
 			}
