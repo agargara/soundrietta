@@ -1,0 +1,77 @@
+.
+.
+.
+bool loadMedia(vector<Tile>& tiles){
+	.
+	.
+	.
+	if(!setTiles(tiles)){
+		cerr << ("Failed to load tile set!\n");
+		success = false;
+	}
+	.
+	.
+	.
+	return success;
+}
+
+
+bool setTiles(vector<Tile>& tiles){
+	bool tilesLoaded = true;
+    int x = 0, y = 0;
+    std::ifstream map("res/map01.txt");
+    if(map == NULL){
+		cerr << ("Unable to load map file!\n");
+		tilesLoaded = false;
+    }else{
+		for(int i = 0; i < TOTAL_TILES; ++i){
+			int tileType = -1;
+			char* tileChar = NULL;
+			map.getline(tileChar, 4, ',');
+			tileType = atoi(tileChar);
+		    tileType--;
+			if(map.fail()){
+				cerr << ("Error loading map: Unexpected end of file!\n");
+				tilesLoaded = false;
+				break;
+			}
+			if((tileType >= 0) && (tileType < TOTAL_TILE_SPRITES)){
+				Tile newTile = Tile(x, y, tileType, TILE_SIZE);
+				tiles.push_back(newTile);
+				cerr << "Tiles size: " << to_string(tiles.size()); 	// Works just fine, grows as tiles are added
+			}else{
+				cerr << string("Error loading map: Invalid tile type at ") << to_string(i) << "!\n";
+				tilesLoaded = false;
+				break;
+			}
+			x +=  TILE_SIZE;
+			if(x >= LEVEL_WIDTH){
+				x = 0;
+				y +=  TILE_SIZE;
+			}
+			.
+			.
+			.
+		}	
+	}
+    map.close();
+	return tilesLoaded;
+}
+
+int main(int argc, char* args[]){
+	.
+	.
+	.
+	cerr << "Tiles size: "+to_string(tiles.size())+"\n"; // Works fine, results in Tiles size: 0
+	if(!loadMedia(tiles)){
+		cerr << "Failed to load media!\n";
+	}else{	
+		cerr << "Tiles size: "+to_string(tiles.size())+"\n"; // Results in segfault
+		.
+		.
+		.
+	}
+	.
+	.
+	.
+}

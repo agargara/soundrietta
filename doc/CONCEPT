@@ -1,4 +1,4 @@
-Soundhunter/Soundquest
+Soundrietta
 
 CONCEPT
 Genre: 2D Open world RPG
@@ -17,3 +17,15 @@ Chorus
 Hometown
 Pond (frog, water, breeze)
 Abandoned Mine (delay DSP)
+
+Intro/tutorial
+Start at left end of screen. At right is door. Door plays sound. 
+[X] key appears at bottom of screen. Locked door noise.
+
+Jump around to find tape recorder.
+	[X]
+    You got the Tape Recorder! 
+(comes with 1x tape)
+	[A] record/stop.
+	[S] playback.
+
