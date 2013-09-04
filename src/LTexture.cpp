@@ -46,6 +46,10 @@ bool LTexture::loadFromFile(std::string path, SDL_Renderer* gRenderer){
 bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor, SDL_Renderer* gRenderer, TTF_Font *gFont){
 	//Get rid of preexisting texture
 	free();
+	// Check for empty string
+	if (textureText.empty()){
+		textureText = " ";
+	}
 	//Render text surface
 	SDL_Surface* textSurface = TTF_RenderText_Solid(gFont, textureText.c_str(), textColor);
 	if(textSurface != NULL){

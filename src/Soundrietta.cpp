@@ -1,4 +1,4 @@
-//#define DEBUG
+#define DEBUG
 #include "Soundrietta.h"
 using namespace std; 	// For cerr
 
@@ -45,14 +45,11 @@ bool init(){
 					success = false;
 				}
 				//Initialize SDL_ttf
-				if(TTF_Init() == -1){
-					cerr << ("SDL_ttf could not initialize! SDL_ttf Error: ") << TTF_GetError() << "\n";
-					success = false;
-				}
-				//Open the font
-				gFont = TTF_OpenFont("res/tarzeau.ttf", 10);
-				if(gFont == NULL){
-					cerr << ("Failed to load lazy font! SDL_ttf Error: ") << TTF_GetError() << "\n";
+				#ifdef DEBUG
+					cout << "Initializing TTF.\n";
+				#endif
+				if(TTF_Init() < 0){
+					cerr << string("SDL_ttf could not initialize! SDL_ttf Error: ") << TTF_GetError() << "\n";
 					success = false;
 				}
 			}
@@ -61,8 +58,14 @@ bool init(){
 	return success;
 }
 bool loadMedia(vector<Tile>& tiles){
-	//Loading success flag
 	bool success = true;
+
+	//Load font
+	gFont = TTF_OpenFont("res/tarzeau.ttf", 10);
+	if(gFont == NULL){
+		cerr << ("Failed to load font! SDL_ttf Error: ") << TTF_GetError() << "\n";
+		success = false;
+	}
 	//Load music
 	gMusic = Mix_LoadMUS("res/ambient-mystery.wav");
 	if(gMusic == NULL){
@@ -101,7 +104,7 @@ bool loadMedia(vector<Tile>& tiles){
 		#endif
 	}
 	#ifdef DEBUG
-		cerr << "Tiles size in loadMedia(): "+to_string(tiles.size())+"\n";
+		cerr << "Tiles size after loadMedia(): "+to_string(tiles.size())+"\n";
 	#endif
 	return success;
 }
@@ -160,10 +163,8 @@ bool setTiles(vector<Tile>& tiles){
 				break;
 			}
 			if((tileType >= 0) && (tileType < TOTAL_TILE_SPRITES)){
-				cerr << "Tiles size before newTile: " << to_string(tiles.size()) << "\n";
 				Tile newTile = Tile(x, y, tileType, TILE_SIZE);
 				tiles.push_back(newTile);
-				cerr << "Pushed back new tile. Tiles size: " << to_string(tiles.size());
 			}else{
 				//Stop loading map
 				cerr << string("Error loading map: Invalid tile type at ") << to_string(i) << "!\n";
@@ -252,7 +253,7 @@ int main(int argc, char* args[]){
 		cerr << "Failed to initialize!\n";
 	}else{
 		#ifdef DEBUG
-			cerr << "Finish init\n";
+			cerr << "Finished init.\n";
 		#endif
 		// The utility console
 		myUtil = Util();
@@ -265,9 +266,6 @@ int main(int argc, char* args[]){
 		}else{	
 			#ifdef DEBUG
 				cerr << "Loaded media\n";
-				tiles.push_back(Tile(1, 1, 1, 1));
-				cerr << "Pushed 1 tile\n";
-				cerr << "Tiles size: "+to_string(tiles.size())+"\n";
 			#endif
 			//Main loop flag
 			bool quit = false;
@@ -291,34 +289,20 @@ int main(int argc, char* args[]){
 					dot.handleEvent(e);
 				}
 				//Move the dot
-				#ifdef DEBUG
-					cerr << "Tiles size: "+to_string(tiles.size())+"\n";
-				#endif
 				dot.move(tiles);
 				dot.setCamera(camera);
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
-				#ifdef DEBUG
-					cerr << "Rendering level...\n";
-				#endif
 				//Render level
 				for(int i = 0; i < TOTAL_TILES; ++i){
-					#ifdef DEBUG
-						cerr << "Rendering tile "+to_string(i)+"\n";
-						cerr << "Tiles size: "+to_string(tiles.size())+"\n";
-					#endif
-					
 					tiles[ i ].render(camera, gTileTexture, gTileClips, gRenderer);
 				}
-				#ifdef DEBUG
-					cerr << "Tiles Rendered\n";
-				#endif
 				//Render dot
 				dot.render(camera, gDotTexture, gRenderer);
 				//Write text 
 				SDL_Color textColor = { 255, 0, 0 };
-				if(!gTextTexture.loadFromRenderedText(consoleCoordinates + myUtil.getConsoleMessage(), textColor, gRenderer, gFont)){
+				if(!gTextTexture.loadFromRenderedText(dot.getCoordinates() + myUtil.getConsoleMessage(), textColor, gRenderer, gFont)){
 					cerr << "Failed to render text texture!\n";
 				}else{
 					gTextTexture.render(8, SCREEN_HEIGHT - 18, gRenderer);

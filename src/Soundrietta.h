@@ -11,6 +11,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
+#include <SDL_TTF.h>
 #include "Util.h"
 #include "Tile.h"
 #include "Dot.h"

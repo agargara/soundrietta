@@ -109,7 +109,7 @@ void Dot::render(SDL_Rect& camera, LTexture gDotTexture, SDL_Renderer* gRenderer
 bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){
     bool touchingWall = false;
 
-    int i = 0;
+    unsigned int i = 0;
     while(!touchingWall && (i < tiles.size())) {
         if (tiles[i].touchesWall(mBox)){
             touchingWall=true;
