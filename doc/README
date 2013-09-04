@@ -1,10 +1,9 @@
 Soundrietta
-
-CONCEPT
 Genre: 2D Open world RPG
 You are a young girl with a love for cool sounds. You start with a simple tape recorder. You wander the land finding and collecting sounds for people. The quests start simple and gradually grow more complicated where you must mix sounds or use DSP items to create the desired sound. Collecting sounds will open doors to new areas and items.
 
-A semi post-apocalyptic world with ample vegetation growing among makeshift houses. However, people are happy and the atmosphere is one of life.
+Setting:
+A semi post-apocalyptic world with ample vegetation growing among makeshift houses. People are happy and the atmosphere is one of life.
 
 -- Items --
 Tape recorder
@@ -14,14 +13,14 @@ Delay
 Chorus
 
 -- Areas --
+Intro (house)
 Hometown
 Pond (frog, water, breeze)
 Abandoned Mine (delay DSP)
 
-Intro/tutorial
+Intro (house)
 Start at left end of screen. At right is door. Door plays sound. 
 [X] key appears at bottom of screen. Locked door noise.
-
 Jump around to find tape recorder.
 	[X]
     You got the Tape Recorder! 

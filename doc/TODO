@@ -2,10 +2,11 @@ TODO - Soundrietta
 
 Code
 ----
+- Fix graphics (!?)
 - Fix collision detection
 - Rethink gravity/jump code (look online for theory)
 - Split things into threads
-- Split code into separate files
+O Split code into separate files
 
 Creative
 ----------
