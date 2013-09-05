@@ -101,9 +101,9 @@ void Dot::setCamera(SDL_Rect& camera){
 	}
 }
 
-void Dot::render(SDL_Rect& camera, LTexture gDotTexture, SDL_Renderer* gRenderer){
+int Dot::render(SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer){
     //Show the dot
-	gDotTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer );
+	return gDotTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer);
 }
 
 bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){

@@ -33,7 +33,7 @@ class Dot
 		void setCamera( SDL_Rect& camera );
 
 		//Shows the dot on the screen
-		void render( SDL_Rect& camera, LTexture gDotTexture, SDL_Renderer* gRenderer );
+		int render( SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer );
 
 		// Tests for touching any wall
 		bool touchingAnyWall(const std::vector<Tile>& tiles);

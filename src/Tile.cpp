@@ -13,11 +13,13 @@ Tile::Tile(int x, int y, int tileType, int tileSize){
     //Get the tile type
     mType = tileType;
 }
-void Tile::render(SDL_Rect& camera, LTexture gTileTexture, SDL_Rect gTileClips[], SDL_Renderer* gRenderer) const{
+int Tile::render(SDL_Rect& camera, LTexture& gTileTexture, SDL_Rect gTileClips[], SDL_Renderer* gRenderer) const{
     //If the tile is on screen
     if(isColliding(camera, mBox)){
         //Show the tile
-        gTileTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer, &gTileClips[ mType ]);
+        return gTileTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer, &gTileClips[ mType ]);
+    }else{
+        return 0;
     }
 }
 int Tile::getType() const{

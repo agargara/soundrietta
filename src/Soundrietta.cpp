@@ -140,8 +140,8 @@ bool setTiles(vector<Tile>& tiles){
     //The tile offsets
     int x = 0, y = 0;
     //Open the map
-    ifstream map("res/map01.txt");
-    //If the map couldn't be loaded
+    char* xml = (char*) loadFile("res/map01.tmx", true );
+    NLTmxMap* map = NLLoadTmxMap(xml);
     if(map == NULL){
 		cerr << ("Unable to load map file!\n");
 		tilesLoaded = false;
@@ -150,18 +150,11 @@ bool setTiles(vector<Tile>& tiles){
 			cerr << "Opened map\n";
 		#endif
 		//Initialize the tiles
-		for(int i = 0; i < TOTAL_TILES; ++i){
+		for(int i = 0; i < (map->height * map->width); ++i){
 			int tileType = -1;
-			// char* tileChar = NULL;
-			//map.getline(tileChar, 4, ','); @TODO file reading is broken
-			tileType = 2; // atoi(tileChar);
+			int* tileTypePtr = map->layers[0]->data;	
+			tileType = *(tileTypePtr + i);				//@TODO probably dangerous
 		    tileType--;
-			if(map.fail()){
-				//Stop loading map
-				cerr << ("Error loading map: Unexpected end of file!\n");
-				tilesLoaded = false;
-				break;
-			}
 			if((tileType >= 0) && (tileType < TOTAL_TILE_SPRITES)){
 				Tile newTile = Tile(x, y, tileType, TILE_SIZE);
 				tiles.push_back(newTile);
@@ -241,8 +234,28 @@ bool setTiles(vector<Tile>& tiles){
 			gTileClips[ TILE_BOTTOMRIGHT ].h =  TILE_SIZE;
 		}
 	}
-    map.close();
 	return tilesLoaded;
+}
+static void* loadFile( const char * filename, bool appendNull ) {
+    
+    FILE* f = fopen( filename, "r" );
+    if ( !f ) {
+        return 0;
+    }
+    
+    fseek( f, 0, SEEK_END );
+    auto length = ftell( f ) + appendNull;
+    fseek( f, 0, SEEK_SET );
+    
+    void* buffer = malloc( length );
+    fread( buffer, length, 1, f );
+    fclose( f );
+    
+    if ( appendNull ) {
+        ((char*)buffer)[ length-1 ] = 0;
+    }
+    
+    return buffer;
 }
 
 int main(int argc, char* args[]){
@@ -276,7 +289,7 @@ int main(int argc, char* args[]){
 			//Level camera
 			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 			// Music
-			Mix_PlayMusic(gMusic, -1);
+			// @TODO add mute music button Mix_PlayMusic(gMusic, -1);
 			//While application is running
 			while(!quit){
 				//Handle events on queue

@@ -4,11 +4,14 @@ LDFLAGS = -framework SDL2 -framework SDL2_image -framework SDL2_mixer -framework
 
 all: Soundrietta
 
-Soundrietta : obj/Soundrietta.o obj/Util.o obj/Tile.o obj/Dot.o obj/LTexture.o obj/Soundrietta.o
-	${CC} obj/Util.o obj/Tile.o obj/Dot.o obj/LTexture.o obj/Soundrietta.o -o bin/Soundrietta ${CFLAGS} ${LDFLAGS}
+Soundrietta : obj/Soundrietta.o obj/Util.o obj/Tile.o obj/Dot.o obj/LTexture.o obj/NLTmxMap.o
+	${CC} obj/Util.o obj/Tile.o obj/Dot.o obj/LTexture.o obj/Soundrietta.o obj/NLTmxMap.o -o bin/Soundrietta ${CFLAGS} ${LDFLAGS}
 
-obj/Soundrietta.o : src/Soundrietta.cpp src/Soundrietta.h src/Util.h src/Tile.h src/Dot.h src/LTexture.h
+obj/Soundrietta.o : src/Soundrietta.cpp src/Soundrietta.h src/Util.h src/Tile.h src/Dot.h src/LTexture.h src/NLTmxMap.h
 	${CC} ${CFLAGS} -c src/Soundrietta.cpp -o obj/Soundrietta.o
+
+obj/NLTmxMap.o :  src/NLTmxMap.cpp src/NLTmxMap.h
+	${CC} ${CFLAGS} -c src/NLTmxMap.cpp -o obj/NLTmxMap.o
 
 obj/Util.o :  src/Util.cpp src/Util.h
 	${CC} ${CFLAGS} -c src/Util.cpp -o obj/Util.o

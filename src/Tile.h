@@ -14,7 +14,7 @@ class Tile
 		Tile( int x, int y, int tileType, int tileSize);
 
 		//Shows the tile
-		void render( SDL_Rect& camera,  LTexture gTileTexture, SDL_Rect gTileClips[], SDL_Renderer* gRenderer) const;
+		int render( SDL_Rect& camera,  LTexture& gTileTexture, SDL_Rect gTileClips[], SDL_Renderer* gRenderer) const;
 
 		//Get the tile type
 		int getType() const;

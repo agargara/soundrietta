@@ -16,6 +16,7 @@
 #include "Tile.h"
 #include "Dot.h"
 #include "LTexture.h"
+#include "NLTmxMap.h"
 
 //Starts up SDL and creates window
 bool init();
@@ -25,6 +26,9 @@ bool loadMedia( std::vector<Tile>& tiles );
 
 //Frees media and shuts down SDL
 void close();
+
+// Loads a file into a buffer
+static void* loadFile(const char * filename, bool appendNull);
 
 //Sets tiles from tile map
 bool setTiles( std::vector<Tile>& tiles);
