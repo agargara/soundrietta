@@ -27,7 +27,7 @@ void Dot::handleEvent(SDL_Event& e){
         //Adjust the velocity
         switch(e.key.keysym.sym)
         {
-            case SDLK_UP: if(!airborne){airborne = true; mVelY = -1;} break;
+            case SDLK_UP: if(!airborne){airborne = true; mAccelY = -1.5; mVelY = -4;} break;
             case SDLK_DOWN: mAccelY += DOT_ACCEL_Y; break;
             case SDLK_LEFT: mAccelX -= DOT_ACCEL_X; break;
             case SDLK_RIGHT: mAccelX += DOT_ACCEL_X; break;
@@ -58,28 +58,28 @@ void Dot::move(const std::vector<Tile>& tiles){
 	if(mAccelX == 0){
 		mVelX /= FRICTION;
 	}
-	if (!airborne){
-			mAccelY = -2;
-	}
-	//Move the dot left or right
     mBox.x += mVelX;
-    //If the dot went too far to the left or right or touched a wall
-    if((mBox.x < 0) || (mBox.x + DOT_WIDTH > LEVEL_WIDTH) || touchingAnyWall(tiles)){
-        //move back
-        mBox.x -= mVelX;
-    } 
-    //Move the dot up or down
     mBox.y += mVelY;
-    //If the dot went too far up or down or touched a wall
-    if((mBox.y < 0) || (mBox.y + DOT_HEIGHT > LEVEL_HEIGHT) || touchingAnyWall(tiles)){
-        //move back
+    // boundary testing
+    if((mBox.x < 0) || (mBox.x + DOT_WIDTH > LEVEL_WIDTH)){ 
+        mBox.x -= mVelX;
+        mAccelX *= -1; // Reverse direction
+    } 
+    if((mBox.y < 0) || (mBox.y + DOT_HEIGHT > LEVEL_HEIGHT)){
         mBox.y -= mVelY;
-        if (mVelY > 0){ // If we were going down, we are no longer airborne
-        	airborne = false;
+        mAccelY *= -1; // Reverse direction
+    }
+    std::vector<int> edge = touchingAnyWall(tiles);
+    if((edge[0] + edge[1]) > 0){
+        mAccelX *= -1; 
+        mAccelY *= -1; 
+        if (mVelY > 0){
+            airborne = false;
+        }else{
+            airborne = true;
         }
-    }else{
-		airborne = true;
-	}
+        // @TODO moveToEdge(edge);
+    }
 }
 
 void Dot::setCamera(SDL_Rect& camera){
@@ -106,17 +106,19 @@ int Dot::render(SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer
 	return gDotTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer);
 }
 
-bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){
-    bool touchingWall = false;
-
+std::vector<int> Dot::touchingAnyWall(const std::vector<Tile>& tiles){
+    std::vector<int> edge = {-1, -1};
     unsigned int i = 0;
+    bool touchingWall = false;
     while(!touchingWall && (i < tiles.size())) {
         if (tiles[i].touchesWall(mBox)){
-            touchingWall=true;
+            edge[0] = 1;
+            edge[1] = 1;
+            touchingWall = true;
         }
-        i++;
+        ++i;
     }
-    return touchingWall;
+    return edge;
 }
 
 std::string Dot::getCoordinates(){

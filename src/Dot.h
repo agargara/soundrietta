@@ -36,7 +36,7 @@ class Dot
 		int render( SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer );
 
 		// Tests for touching any wall
-		bool touchingAnyWall(const std::vector<Tile>& tiles);
+		std::vector<int> touchingAnyWall(const std::vector<Tile>& tiles);
 
 		// Returns coordinates of dots x, y
 		std::string getCoordinates();
