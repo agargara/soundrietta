@@ -26,7 +26,12 @@ class Tile
 		SDL_Rect getBox() const;
 
 		//Box collision detectors
-		bool isColliding( SDL_Rect a, SDL_Rect b ) const;
+		bool isCollidingSphere( SDL_Rect a, SDL_Rect b ) const;
+
+		// Distance between two points
+		float getDistance(float ax, float ay, float bx, float by) const;
+
+		bool isCollidingRect( SDL_Rect a, SDL_Rect b ) const;
 
 		//Checks collision box against set of tiles
 		bool touchesWall( SDL_Rect box) const;

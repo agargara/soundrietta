@@ -285,7 +285,7 @@ int main(int argc, char* args[]){
 			//Event handler
 			SDL_Event e;
 			//The dot that will be moving around on the screen
-			Dot dot;
+			Dot dot = Dot(myUtil);
 			//Level camera
 			SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 			// Music

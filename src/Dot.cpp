@@ -1,10 +1,9 @@
 #define DEBUG
 
-#include <iostream> // for cerr
 #include "Dot.h"
 
 // Constructor
-Dot::Dot(){
+Dot::Dot(Util& theUtil){
     //Initialize the collision box
     mBox.x = 0;
     mBox.y = 0;
@@ -18,6 +17,7 @@ Dot::Dot(){
     mAccelY = 0;
 
     airborne = true;
+    myUtil = theUtil;
 }
 
 void Dot::handleEvent(SDL_Event& e){
@@ -27,13 +27,14 @@ void Dot::handleEvent(SDL_Event& e){
         //Adjust the velocity
         switch(e.key.keysym.sym)
         {
-            case SDLK_UP: if(!airborne){airborne = true; mAccelY = -1.5; mVelY = -4;} break;
-            case SDLK_DOWN: mAccelY += DOT_ACCEL_Y; break;
+            case SDLK_UP:   if(!airborne){mVelY = -JUMP_SPEED;}
+                            break;
+            case SDLK_DOWN: break;
             case SDLK_LEFT: mAccelX -= DOT_ACCEL_X; break;
             case SDLK_RIGHT: mAccelX += DOT_ACCEL_X; break;
         }
-    }else if(e.type == SDL_KEYUP && e.key.repeat == 0){
-        //Adjust the velocity
+    }else if(e.type == SDL_KEYUP && e.key.repeat == 0){ // Release key
+        // Adjust the velocity
         switch(e.key.keysym.sym){
             case SDLK_UP: mAccelY = 0; break;
             case SDLK_DOWN: mAccelY = 0; break;
@@ -44,42 +45,51 @@ void Dot::handleEvent(SDL_Event& e){
 }
 
 void Dot::move(const std::vector<Tile>& tiles){
-	// Apply acceleration
-	if(fabs(mVelX) < MAX_SPEED){
-		mVelX += mAccelX;
-	}
-	if(fabs(mVelY) < MAX_SPEED){
-		mVelY += mAccelY;
-	}
-	if(mVelY < MAX_SPEED && airborne){
-		mVelY += GRAVITY;
-	}
-	// Apply deceleration
-	if(mAccelX == 0){
-		mVelX /= FRICTION;
-	}
-    mBox.x += mVelX;
-    mBox.y += mVelY;
-    // boundary testing
-    if((mBox.x < 0) || (mBox.x + DOT_WIDTH > LEVEL_WIDTH)){ 
-        mBox.x -= mVelX;
-        mAccelX *= -1; // Reverse direction
-    } 
-    if((mBox.y < 0) || (mBox.y + DOT_HEIGHT > LEVEL_HEIGHT)){
-        mBox.y -= mVelY;
-        mAccelY *= -1; // Reverse direction
+    airborne = true;
+	float dotX = mBox.x;
+    float dotY = mBox.y;
+
+    if((mVelY + GRAVITY) < MAX_SPEED){
+        mVelY += GRAVITY; // Constant gravity
     }
-    std::vector<int> edge = touchingAnyWall(tiles);
-    if((edge[0] + edge[1]) > 0){
-        mAccelX *= -1; 
-        mAccelY *= -1; 
-        if (mVelY > 0){
+    // Apply acceleration
+    if(fabs(mVelX + mAccelX) < MAX_SPEED){
+        mVelX += mAccelX;
+    }
+    if(fabs(mVelY + mAccelY) < MAX_SPEED){
+        mVelY += mAccelY;
+    }
+    // Apply deceleration
+    if(mAccelX == 0){
+        mVelX /= FRICTION;
+    }
+    if(fabs(mVelX) < .1){
+        mVelX = 0;
+    }
+
+    // horiz movement tests
+    dotX += mVelX;
+    if((dotX < 0) || (dotX + DOT_WIDTH > LEVEL_WIDTH) || touchingHorizWall(dotX, tiles)){ 
+        dotX -= mVelX;
+        mAccelX = 0;
+        mVelX *= -1; // Reverse direction
+        mVelX /= FRICTION; // Apply friction
+    } 
+    // vertical movement tests
+    dotY += mVelY;
+    if((dotY < 0) || (dotY + DOT_HEIGHT > LEVEL_HEIGHT) || touchingVertWall(dotY, tiles)){
+        dotY -= mVelY;
+        if(mVelY > 0){ // If we were going down, stop.
             airborne = false;
         }else{
-            airborne = true;
+            dotY -= mVelY;
+            mVelY *= -1; // Reverse direction
+            mVelY /= FRICTION; // Apply friction
         }
-        // @TODO moveToEdge(edge);
     }
+
+    mBox.x = int(dotX + 0.5);
+    mBox.y = int(dotY + 0.5);
 }
 
 void Dot::setCamera(SDL_Rect& camera){
@@ -106,22 +116,50 @@ int Dot::render(SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer
 	return gDotTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer);
 }
 
-std::vector<int> Dot::touchingAnyWall(const std::vector<Tile>& tiles){
-    std::vector<int> edge = {-1, -1};
-    unsigned int i = 0;
+bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){
     bool touchingWall = false;
+    unsigned int i = 0;
     while(!touchingWall && (i < tiles.size())) {
         if (tiles[i].touchesWall(mBox)){
-            edge[0] = 1;
-            edge[1] = 1;
             touchingWall = true;
         }
         ++i;
     }
-    return edge;
+    return touchingWall;
+}
+bool Dot::touchingHorizWall(float dotX, const std::vector<Tile>& tiles){
+    bool touchingWall = false;
+    unsigned int i = 0;
+    SDL_Rect newBox;
+    newBox.x = dotX;
+    newBox.y = mBox.y;
+    newBox.w = mBox.w;
+    newBox.h = mBox.h;
+    while(!touchingWall && (i < tiles.size())) {
+        if (tiles[i].touchesWall(newBox)){
+            touchingWall = true;
+        }
+        ++i;
+    }
+    return touchingWall;
+}
+bool Dot::touchingVertWall(float dotY, const std::vector<Tile>& tiles){
+    bool touchingWall = false;
+    unsigned int i = 0;
+    SDL_Rect newBox;
+    newBox.x = mBox.x;
+    newBox.y = dotY;
+    newBox.w = mBox.w;
+    newBox.h = mBox.h;
+    while(!touchingWall && (i < tiles.size())) {
+        if (tiles[i].touchesWall(newBox)){
+            touchingWall = true;
+        }
+        ++i;
+    }
+    return touchingWall;
 }
 
 std::string Dot::getCoordinates(){
-    Util myUtil = Util();
     return (myUtil.stringify(mBox.x) + ", " + myUtil.stringify(mBox.y));
 }

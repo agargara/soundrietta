@@ -3,9 +3,12 @@
 
 #include <SDL.h>
 #include <vector>
+#include <iostream> // for cerr
+#include <string>
 #include "Util.h"
 #include "LTexture.h"
 #include "Tile.h"
+
 
 //The dot that moves around on the screen
 class Dot
@@ -20,8 +23,11 @@ class Dot
 		static constexpr float DOT_ACCEL_Y = 0.2;
 		static constexpr float MAX_SPEED = 8;
 
+		// Default jump
+		static constexpr float JUMP_SPEED = 12;	
+
 		//Initializes the variables
-		Dot();
+		Dot(Util& theUtil);
 
 		//Takes key presses and adjusts the dot's velocity
 		void handleEvent( SDL_Event& e );
@@ -36,7 +42,9 @@ class Dot
 		int render( SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer );
 
 		// Tests for touching any wall
-		std::vector<int> touchingAnyWall(const std::vector<Tile>& tiles);
+		bool touchingAnyWall(const std::vector<Tile>& tiles);
+		bool touchingHorizWall(float dotX, const std::vector<Tile>& tiles);
+		bool touchingVertWall(float dotY, const std::vector<Tile>& tiles);
 
 		// Returns coordinates of dots x, y
 		std::string getCoordinates();
@@ -53,6 +61,9 @@ class Dot
 
 		// In mid-air or not
 		bool airborne;
+
+		// Utility thing
+		Util myUtil;
 };
 
 #endif

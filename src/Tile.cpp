@@ -15,7 +15,7 @@ Tile::Tile(int x, int y, int tileType, int tileSize){
 }
 int Tile::render(SDL_Rect& camera, LTexture& gTileTexture, SDL_Rect gTileClips[], SDL_Renderer* gRenderer) const{
     //If the tile is on screen
-    if(isColliding(camera, mBox)){
+    if(isCollidingRect(camera, mBox)){
         //Show the tile
         return gTileTexture.render(mBox.x - camera.x, mBox.y - camera.y, gRenderer, &gTileClips[ mType ]);
     }else{
@@ -35,7 +35,27 @@ bool Tile::isSolid() const{
 SDL_Rect Tile::getBox() const{
     return mBox;
 }
-bool Tile::isColliding(SDL_Rect a, SDL_Rect b) const{
+
+
+bool Tile::isCollidingSphere(SDL_Rect a, SDL_Rect b) const{
+    float ax = a.x + (a.w / 2);
+    float ay = a.y + (a.h / 2);
+    float bx = b.x + (b.w / 2);
+    float by = b.y + (b.h / 2);
+    
+    float distance = getDistance(ax, ay, bx, by);
+    if (distance < ((a.w/2) + (b.w/2))){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+float Tile::getDistance(float ax, float ay, float bx, float by) const{
+    return sqrt(((ax-bx)*(ax-bx)) + ((ay-by)*(ay-by)));
+}
+
+bool Tile::isCollidingRect(SDL_Rect a, SDL_Rect b) const{
     //The sides of the rectangles
     int leftA, leftB;
     int rightA, rightB;
@@ -67,9 +87,10 @@ bool Tile::isColliding(SDL_Rect a, SDL_Rect b) const{
     //If none of the sides from A are outside B
     return true;
 }
+
 bool Tile::touchesWall(SDL_Rect box) const{
     if(isSolid()){
-        if(isColliding(box, mBox)){
+        if(isCollidingSphere(box, mBox)){
             return true;
         }
     }
