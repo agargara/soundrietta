@@ -17,11 +17,15 @@ Dot::Dot(Util& theUtil){
     mAccelY = 0;
 
     airborne = true;
+    jumping = false;
+    jumpVel = MAX_JUMP_SPEED;
     myUtil = theUtil;
 }
 
+
 void Dot::handleEvent(SDL_Event& e){
-    //If a key was pressed
+    //If a key was pressed 
+    /*
 	if(e.type == SDL_KEYDOWN && e.key.repeat == 0)
     {
         //Adjust the velocity
@@ -41,16 +45,58 @@ void Dot::handleEvent(SDL_Event& e){
             case SDLK_LEFT: mAccelX = 0; break;
             case SDLK_RIGHT: mAccelX = 0; break;
         }
+    } 
+    */
+}
+
+void Dot::processKeys(){
+    const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
+    if(currentKeyStates[SDL_SCANCODE_UP] || currentKeyStates[SDL_SCANCODE_Z]){
+       if(!airborne){
+            jumping = true;
+            jumpVel = MAX_JUMP_SPEED;
+            mVelY = -jumpVel;
+       }
+       if(jumping){ // Parabolic approach to max jump speed
+           mVelY = -jumpVel;
+           jumpVel /= 1.04; // (MAX_JUMP_SPEED/jumpVel);
+           if (jumpVel < 2){
+            jumping = false;
+           }
+       }
+    }else {
+        if(jumping){
+            mVelY = 0;
+            jumping = false;
+            mAccelY = 0;
+        }
+    }
+    if(currentKeyStates[SDL_SCANCODE_LEFT]){
+        if(currentKeyStates[SDL_SCANCODE_RIGHT]){
+            mAccelX = 0;
+        }else{
+            mAccelX -= DOT_ACCEL_X;
+        }
+    }else if(currentKeyStates[SDL_SCANCODE_RIGHT]){
+        mAccelX += DOT_ACCEL_X;
+    }else{
+        mAccelX = 0;
     }
 }
 
 void Dot::move(const std::vector<Tile>& tiles){
+    processKeys();
+
     airborne = true;
 	float dotX = mBox.x;
     float dotY = mBox.y;
 
-    if((mVelY + GRAVITY) < MAX_SPEED){
-        mVelY += GRAVITY; // Constant gravity
+    if(mVelY < -0.1){  // Slow down ascent if not jumping
+        if (!jumping){
+            mVelY /= 2;
+        }
+    }else if((mVelY + GRAVITY) < MAX_SPEED){ // Apply gravity to descent
+        mVelY += GRAVITY;
     }
     // Apply acceleration
     if(fabs(mVelX + mAccelX) < MAX_SPEED){
@@ -70,22 +116,22 @@ void Dot::move(const std::vector<Tile>& tiles){
     // horiz movement tests
     dotX += mVelX;
     if((dotX < 0) || (dotX + DOT_WIDTH > LEVEL_WIDTH) || touchingHorizWall(dotX, tiles)){ 
-        dotX -= mVelX;
-        mAccelX = 0;
-        mVelX *= -1; // Reverse direction
-        mVelX /= FRICTION; // Apply friction
+        dotX -= mVelX;      // Cancel movement
+        mAccelX = 0;        // Stop accel
+        mVelX *= -1;        // Reverse direction
+        mVelX /= FRICTION;  // Apply friction
     } 
     // vertical movement tests
     dotY += mVelY;
     if((dotY < 0) || (dotY + DOT_HEIGHT > LEVEL_HEIGHT) || touchingVertWall(dotY, tiles)){
-        dotY -= mVelY;
-        if(mVelY > 0){ // If we were going down, stop.
+        dotY -= mVelY;      // Cancel movement
+        if(mVelY > 0){      // If we were going down, stop.
             airborne = false;
-        }else{
-            dotY -= mVelY;
-            mVelY *= -1; // Reverse direction
-            mVelY /= FRICTION; // Apply friction
+        }else{              // If we were jumping, stop.
+            jumping = false;
+            mVelY *= -1;    // Reverse direction
         }
+        mVelY /= FRICTION;  // Apply friction
     }
 
     mBox.x = int(dotX + 0.5);
@@ -118,6 +164,7 @@ int Dot::render(SDL_Rect& camera, LTexture& gDotTexture, SDL_Renderer* gRenderer
 
 bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){
     bool touchingWall = false;
+    /*
     unsigned int i = 0;
     while(!touchingWall && (i < tiles.size())) {
         if (tiles[i].touchesWall(mBox)){
@@ -125,7 +172,8 @@ bool Dot::touchingAnyWall(const std::vector<Tile>& tiles){
         }
         ++i;
     }
-    return touchingWall;
+    */
+    return touchingWall; 
 }
 bool Dot::touchingHorizWall(float dotX, const std::vector<Tile>& tiles){
     bool touchingWall = false;
@@ -134,7 +182,7 @@ bool Dot::touchingHorizWall(float dotX, const std::vector<Tile>& tiles){
     newBox.x = dotX;
     newBox.y = mBox.y;
     newBox.w = mBox.w;
-    newBox.h = mBox.h;
+    newBox.h = (mBox.h/2);
     while(!touchingWall && (i < tiles.size())) {
         if (tiles[i].touchesWall(newBox)){
             touchingWall = true;

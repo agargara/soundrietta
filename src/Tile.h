@@ -34,7 +34,9 @@ class Tile
 		bool isCollidingRect( SDL_Rect a, SDL_Rect b ) const;
 
 		//Checks collision box against set of tiles
-		bool touchesWall( SDL_Rect box) const;
+		bool touchesWall(SDL_Rect box) const;
+		bool touchesHorizWall(SDL_Rect box) const;
+		bool touchesVertWall(SDL_Rect box) const;
 
     private:
 		//The attributes of the tile

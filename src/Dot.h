@@ -22,12 +22,12 @@ class Dot
 		static constexpr float DOT_ACCEL_X = 0.2;
 		static constexpr float DOT_ACCEL_Y = 0.2;
 		static constexpr float MAX_SPEED = 8;
-
-		// Default jump
-		static constexpr float JUMP_SPEED = 12;	
+		static constexpr float MAX_JUMP_SPEED = 8;	
 
 		//Initializes the variables
 		Dot(Util& theUtil);
+
+		void processKeys();
 
 		//Takes key presses and adjusts the dot's velocity
 		void handleEvent( SDL_Event& e );
@@ -61,6 +61,8 @@ class Dot
 
 		// In mid-air or not
 		bool airborne;
+		bool jumping;
+		float jumpVel;
 
 		// Utility thing
 		Util myUtil;

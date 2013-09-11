@@ -90,9 +90,32 @@ bool Tile::isCollidingRect(SDL_Rect a, SDL_Rect b) const{
 
 bool Tile::touchesWall(SDL_Rect box) const{
     if(isSolid()){
-        if(isCollidingSphere(box, mBox)){
-            return true;
-        }
+        return isCollidingRect(box, mBox);
+    }else{
+        return false;
     }
-    return false;
 }
+//@TODO don't use these yet, they're broken
+bool Tile::touchesHorizWall(SDL_Rect box) const{
+    if(isSolid()){
+        if(((box.x + box.w) > mBox.x) && (box.x < (mBox.x + mBox.w))){
+            return true;
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
+}
+bool Tile::touchesVertWall(SDL_Rect box) const{
+    if(isSolid()){
+        if(((box.y + box.h) > mBox.y) && (box.y < (mBox.y + mBox.h))){
+            return true;
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
+}
+

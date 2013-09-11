@@ -36,7 +36,7 @@ const int TILE_BOTTOMRIGHT = 11;
 
 // Physics
 const float GRAVITY = .4;
-const float FRICTION = 2;
+const float FRICTION = 1.4;
 
 
 class Util{
